@@ -3,7 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "extract:docs": "node scripts/extract-docs.mjs"
+    "extract:docs": "node scripts/extract-docs.mjs",
+    "validate:batch": "node scripts/validate-question-batch.mjs",
+    "merge:batches": "node scripts/merge-question-batches.mjs",
+    "next:ids": "node scripts/section-question-status.mjs"
   },
   "devDependencies": {
     "pdf-parse": "^2.4.5"
