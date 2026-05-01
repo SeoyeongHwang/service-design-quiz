@@ -15,6 +15,8 @@
  * @property {string[]=} wrongExplanations
  * @property {number=} theoryPage
  * @property {string=} theoryRange
+ * @property {string=} guidelineCode
+ * @property {string=} guidelineTopic
  * @property {string[]=} keywords
  * @property {Difficulty=} difficulty
  * @property {ExamStyle} examStyle

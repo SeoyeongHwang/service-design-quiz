@@ -18,6 +18,12 @@ const sectionQuestionCount = sections.reduce((accumulator, section) => {
   return accumulator;
 }, {});
 
+const sourceTypeLabelMap = {
+  theory: "이론서 기반",
+  keyword: "키워드 기반",
+  generated: "자체 제작",
+};
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -387,6 +393,29 @@ function renderQuiz() {
                     <span class="result-label">문제 유형</span>
                     <strong>${escapeHtml(question.examStyle)}</strong>
                   </div>
+                </div>
+
+                <div class="result-list">
+                  <div class="result-item">
+                    <span class="result-label">출처 유형</span>
+                    <strong>${escapeHtml(
+                      sourceTypeLabelMap[question.sourceType] ?? question.sourceType,
+                    )}</strong>
+                  </div>
+                  ${
+                    question.guidelineCode || question.guidelineTopic
+                      ? `
+                        <div class="result-item">
+                          <span class="result-label">출제기준 연결</span>
+                          <strong>${escapeHtml(
+                            [question.guidelineCode, question.guidelineTopic]
+                              .filter(Boolean)
+                              .join(" · "),
+                          )}</strong>
+                        </div>
+                      `
+                      : ""
+                  }
                 </div>
               </section>
             `

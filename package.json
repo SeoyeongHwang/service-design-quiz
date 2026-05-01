@@ -1,0 +1,11 @@
+{
+  "name": "service-design-quiz",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "extract:docs": "node scripts/extract-docs.mjs"
+  },
+  "devDependencies": {
+    "pdf-parse": "^2.4.5"
+  }
+}
