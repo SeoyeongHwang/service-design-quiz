@@ -28,7 +28,7 @@
 - `drafts/templates/ready/strategy-batch-011.prompt.md`
 - `drafts/templates/ready/development-operation-batch-011.prompt.md`
 
-현재 ready 프롬프트는 첫 추가 배치 기준으로 `011-020` 생성용입니다. 이후에는 같은 섹션 파일에 이어서 추가하면 되고, 다음 시작 번호는 `npm run next:ids`로 확인하면 됩니다.
+현재 ready 프롬프트는 한 번에 30문항을 생성합니다. 첫 추가 배치 기준으로 `planning`, `research`, `strategy`는 `011-040`, `development_operation`은 기존 초안 이후인 `021-050` 생성용입니다. 이후에는 같은 섹션 파일에 이어서 추가하면 되고, 다음 시작 번호는 `npm run next:ids`로 확인하면 됩니다.
 
 ## 폴더 구조
 
