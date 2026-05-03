@@ -1,16 +1,20 @@
-export function getRandomQuestion(questionPool, previousQuestionId = null) {
+export function getRandomQuestion(questionPool, excludedQuestionIds = new Set()) {
   if (!questionPool.length) {
     return null;
   }
 
-  if (questionPool.length === 1) {
-    return questionPool[0];
+  const excludedIds =
+    excludedQuestionIds instanceof Set
+      ? excludedQuestionIds
+      : new Set(excludedQuestionIds);
+  const candidatePool = questionPool.filter(
+    (question) => !excludedIds.has(question.id),
+  );
+
+  if (!candidatePool.length) {
+    return null;
   }
 
-  const filteredQuestions = questionPool.filter(
-    (question) => question.id !== previousQuestionId,
-  );
-  const candidatePool = filteredQuestions.length ? filteredQuestions : questionPool;
   const randomIndex = Math.floor(Math.random() * candidatePool.length);
 
   return candidatePool[randomIndex];

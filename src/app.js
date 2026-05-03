@@ -10,7 +10,7 @@ const state = {
   screen: "home",
   selectedChoiceIndex: null,
   isAnswerRevealed: false,
-  sessionQuestionCount: 0,
+  answeredQuestionIdsBySection: {},
 };
 
 const difficultyLabelMap = {
@@ -50,6 +50,50 @@ function getCurrentSection() {
   return state.currentSectionId ? sectionsById[state.currentSectionId] : null;
 }
 
+function getSectionQuestionPool(sectionId) {
+  return questionsBySection[sectionId] ?? [];
+}
+
+function getAnsweredQuestionIds(sectionId) {
+  if (!state.answeredQuestionIdsBySection[sectionId]) {
+    state.answeredQuestionIdsBySection[sectionId] = new Set();
+  }
+
+  return state.answeredQuestionIdsBySection[sectionId];
+}
+
+function getAnsweredCount(sectionId) {
+  return getAnsweredQuestionIds(sectionId).size;
+}
+
+function getRemainingCount(sectionId) {
+  return Math.max(
+    getSectionQuestionPool(sectionId).length - getAnsweredCount(sectionId),
+    0,
+  );
+}
+
+function isSectionComplete(sectionId) {
+  const totalCount = getSectionQuestionPool(sectionId).length;
+  return totalCount > 0 && getAnsweredCount(sectionId) >= totalCount;
+}
+
+function resetSectionProgress(sectionId) {
+  state.answeredQuestionIdsBySection[sectionId] = new Set();
+  state.currentQuestion = null;
+  state.selectedChoiceIndex = null;
+  state.isAnswerRevealed = false;
+}
+
+function getCurrentQuestionNumber(sectionId) {
+  const totalCount = getSectionQuestionPool(sectionId).length;
+  const answeredCount = getAnsweredCount(sectionId);
+  const currentQuestionOffset =
+    state.currentQuestion && !state.isAnswerRevealed ? 1 : 0;
+
+  return Math.min(answeredCount + currentQuestionOffset, totalCount);
+}
+
 function renderTags(tags, className = "") {
   if (!tags?.length) {
     return "";
@@ -74,7 +118,6 @@ function goHome() {
   state.screen = "home";
   state.selectedChoiceIndex = null;
   state.isAnswerRevealed = false;
-  state.sessionQuestionCount = 0;
   render();
 }
 
@@ -84,7 +127,6 @@ function openSection(sectionId) {
   state.screen = "section";
   state.selectedChoiceIndex = null;
   state.isAnswerRevealed = false;
-  state.sessionQuestionCount = 0;
   render();
 }
 
@@ -96,7 +138,7 @@ function loadNextQuestion() {
     return;
   }
 
-  const questionPool = questionsBySection[section.id] ?? [];
+  const questionPool = getSectionQuestionPool(section.id);
 
   if (!questionPool.length) {
     state.currentQuestion = null;
@@ -107,15 +149,35 @@ function loadNextQuestion() {
     return;
   }
 
-  state.currentQuestion = getRandomQuestion(
-    questionPool,
-    state.currentQuestion?.id ?? null,
-  );
+  const answeredQuestionIds = getAnsweredQuestionIds(section.id);
+  const nextQuestion = getRandomQuestion(questionPool, answeredQuestionIds);
+
+  if (!nextQuestion) {
+    state.currentQuestion = null;
+    state.screen = "complete";
+    state.selectedChoiceIndex = null;
+    state.isAnswerRevealed = false;
+    render();
+    return;
+  }
+
+  state.currentQuestion = nextQuestion;
   state.screen = "quiz";
   state.selectedChoiceIndex = null;
   state.isAnswerRevealed = false;
-  state.sessionQuestionCount += 1;
   render();
+}
+
+function restartSection() {
+  const section = getCurrentSection();
+
+  if (!section) {
+    goHome();
+    return;
+  }
+
+  resetSectionProgress(section.id);
+  loadNextQuestion();
 }
 
 function selectChoice(index) {
@@ -128,8 +190,14 @@ function selectChoice(index) {
 }
 
 function revealAnswer() {
-  if (state.selectedChoiceIndex === null) {
+  if (state.selectedChoiceIndex === null || !state.currentQuestion) {
     return;
+  }
+
+  const section = getCurrentSection();
+
+  if (section) {
+    getAnsweredQuestionIds(section.id).add(state.currentQuestion.id);
   }
 
   state.isAnswerRevealed = true;
@@ -186,7 +254,7 @@ function renderHome() {
             </div>
             <div class="stat-card">
               <span class="stat-label">출제 방식</span>
-              <strong class="stat-value">섹션별 랜덤 추출</strong>
+              <strong class="stat-value">중복 없는 섹션 랜덤</strong>
             </div>
           </div>
         </section>
@@ -213,7 +281,7 @@ function renderHome() {
                 >
                   <div class="section-card-head">
                     <span class="count-badge">${count ? `${count}문항` : "준비중"}</span>
-                    <span class="section-status">${count ? "랜덤 출제 가능" : "문제 없음"}</span>
+                    <span class="section-status">${count ? "중복 없이 랜덤 출제" : "문제 없음"}</span>
                   </div>
                   <h3 class="section-card-title">${escapeHtml(section.name)}</h3>
                   <p class="section-card-copy">${escapeHtml(section.shortDescription)}</p>
@@ -236,6 +304,9 @@ function renderSectionDetail() {
   }
 
   const count = sectionQuestionCount[section.id] ?? 0;
+  const answeredCount = getAnsweredCount(section.id);
+  const remainingCount = getRemainingCount(section.id);
+  const isComplete = isSectionComplete(section.id);
 
   return `
     <main class="page-shell">
@@ -258,6 +329,10 @@ function renderSectionDetail() {
               <span class="info-label">현재 문제 수</span>
               <strong class="info-value">${count}문항</strong>
             </div>
+            <div class="info-card">
+              <span class="info-label">이번 학습 진행</span>
+              <strong class="info-value">${answeredCount}문항 완료 · ${remainingCount}문항 남음</strong>
+            </div>
           </div>
 
           ${renderTags(section.highlights, "tag--muted")}
@@ -266,16 +341,16 @@ function renderSectionDetail() {
             <button class="ghost-button" data-action="go-home">다른 섹션 보기</button>
             <button
               class="primary-button"
-              data-action="start-quiz"
+              data-action="${isComplete ? "restart-section" : "start-quiz"}"
               ${count ? "" : "disabled"}
             >
-              문제 풀기 시작
+              ${isComplete ? "다시 풀기" : answeredCount ? "이어 풀기" : "문제 풀기 시작"}
             </button>
           </div>
 
           <p class="helper-text">
             ${count
-              ? "이 섹션의 문제은행에서 직전 문제를 제외하고 랜덤으로 한 문제씩 출제합니다."
+              ? "이 섹션의 문제은행에서 아직 풀지 않은 문제만 랜덤으로 출제합니다."
               : "이 섹션은 아직 검수된 문제가 없어 앱에서 노출되지 않습니다."}
           </p>
         </section>
@@ -293,6 +368,15 @@ function renderQuiz() {
   }
 
   const isCorrect = state.selectedChoiceIndex === question.answerIndex;
+  const totalQuestionCount = sectionQuestionCount[section.id] ?? 0;
+  const currentQuestionNumber = getCurrentQuestionNumber(section.id);
+  const isLastQuestionRevealed =
+    state.isAnswerRevealed && getRemainingCount(section.id) === 0;
+  const resultMessage = isLastQuestionRevealed
+    ? "이 섹션의 모든 문제를 풀었습니다."
+    : isCorrect
+      ? "개념을 잘 짚었습니다."
+      : "해설을 읽고 다음 문제로 이어가세요.";
   const selectedWrongExplanation =
     state.selectedChoiceIndex !== null &&
     state.selectedChoiceIndex !== question.answerIndex
@@ -317,7 +401,7 @@ function renderQuiz() {
           <div class="quiz-head">
             <div class="meta-line">
               <span class="tag tag--dark">${escapeHtml(section.name)}</span>
-              <span class="tag">문제 ${state.sessionQuestionCount}</span>
+              <span class="tag">문제 ${currentQuestionNumber} / ${totalQuestionCount}</span>
               ${
                 question.difficulty
                   ? `<span class="tag">${escapeHtml(difficultyLabelMap[question.difficulty] ?? question.difficulty)}</span>`
@@ -368,7 +452,7 @@ function renderQuiz() {
               <section class="panel result-panel" aria-live="polite">
                 <div class="result-banner ${isCorrect ? "result-banner--correct" : "result-banner--incorrect"}">
                   <span class="result-mark">${isCorrect ? "정답" : "오답"}</span>
-                  <span>${isCorrect ? "개념을 잘 짚었습니다." : "해설을 읽고 다음 문제로 이어가세요."}</span>
+                  <span>${resultMessage}</span>
                 </div>
 
                 <div class="info-grid">
@@ -448,9 +532,47 @@ function renderQuiz() {
             data-action="${state.isAnswerRevealed ? "next-question" : "reveal-answer"}"
             ${state.selectedChoiceIndex === null && !state.isAnswerRevealed ? "disabled" : ""}
           >
-            ${state.isAnswerRevealed ? "다음 문제" : "정답 확인"}
+            ${
+              state.isAnswerRevealed
+                ? isLastQuestionRevealed
+                  ? "완료 화면 보기"
+                  : "다음 문제"
+                : "정답 확인"
+            }
           </button>
         </div>
+      </div>
+    </main>
+  `;
+}
+
+function renderComplete() {
+  const section = getCurrentSection();
+  const sectionName = section?.name ?? "선택한 섹션";
+  const count = section ? sectionQuestionCount[section.id] ?? 0 : 0;
+
+  return `
+    <main class="page-shell">
+      <div class="app-shell">
+        <div class="topbar">
+          <button class="ghost-button" data-action="go-home">전체 섹션</button>
+        </div>
+
+        <section class="panel empty-panel">
+          <p class="kicker">Section Complete</p>
+          <h1 class="section-title">${escapeHtml(sectionName)} 다 풀었습니다!</h1>
+          <p class="section-description">
+            이 섹션의 ${count}문항을 모두 풀었습니다. 다시 풀기를 누르면 같은 문제은행을 새 랜덤 순서로 다시 시작합니다.
+          </p>
+          <div class="action-grid">
+            <button class="ghost-button" data-action="go-home">홈으로 돌아가기</button>
+            ${
+              section
+                ? `<button class="primary-button" data-action="restart-section">다시 풀기</button>`
+                : ""
+            }
+          </div>
+        </section>
       </div>
     </main>
   `;
@@ -504,6 +626,11 @@ function render() {
     return;
   }
 
+  if (state.screen === "complete") {
+    root.innerHTML = renderComplete();
+    return;
+  }
+
   root.innerHTML = renderHome();
 }
 
@@ -531,6 +658,11 @@ root?.addEventListener("click", (event) => {
 
   if (action === "start-quiz") {
     loadNextQuestion();
+    return;
+  }
+
+  if (action === "restart-section") {
+    restartSection();
     return;
   }
 

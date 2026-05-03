@@ -144,6 +144,8 @@ button {
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .section-header {
@@ -315,7 +317,11 @@ button {
 }
 
 .question-title {
-  font-size: clamp(1.25rem, 3.5vw, 1.7rem);
+  font-size: clamp(1.15rem, 3vw, 1.45rem);
+  line-height: 1.58;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+  word-break: keep-all;
 }
 
 .question-caption {
@@ -334,7 +340,7 @@ button {
   display: flex;
   gap: 12px;
   min-height: 64px;
-  padding: 14px 16px;
+  padding: 16px;
   text-align: left;
 }
 
@@ -374,8 +380,12 @@ button {
 
 .choice-copy {
   display: grid;
-  gap: 6px;
-  line-height: 1.5;
+  flex: 1;
+  gap: 8px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+  word-break: keep-all;
 }
 
 .choice-status {
@@ -387,6 +397,12 @@ button {
   display: grid;
   gap: 14px;
   margin-top: 18px;
+}
+
+.result-panel .info-value {
+  font-weight: 600;
+  line-height: 1.7;
+  white-space: pre-line;
 }
 
 .result-banner {
